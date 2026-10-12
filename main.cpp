@@ -18,13 +18,14 @@ bool bfs(int s, int t) {
     memset(parent, -1, sizeof(parent));
     queue<int> q;
     q.push(s);
+    parent[s] = -2;  // Mark source as visited
     
     while (!q.empty()) {
         int u = q.front();
         q.pop();
         
         for (int v : graph[u]) {
-            if (parent[v] == -1 && v != s && !used_edges[u][v]) {
+            if (parent[v] == -1 && !used_edges[u][v]) {
                 parent[v] = u;
                 if (v == t) return true;
                 q.push(v);
