@@ -2,7 +2,6 @@
 #include <vector>
 #include <cstring>
 #include <algorithm>
-#include <queue>
 
 using namespace std;
 
@@ -10,45 +9,53 @@ const int MAXN = 3005;
 
 // Global arrays
 vector<int> graph[MAXN];
-bool used_edges[MAXN][MAXN];  // Track used edges for current flow computation
-int parent[MAXN];  // For BFS
+bool visited[MAXN];
 
-// BFS to find a path from s to t
-bool bfs(int s, int t) {
-    memset(parent, -1, sizeof(parent));
-    queue<int> q;
-    q.push(s);
-    parent[s] = -2;  // Mark source as visited
+// DFS to find a path from s to t in the residual graph
+bool dfs(int u, int t, vector<vector<int>>& residual, vector<int>& path) {
+    if (u == t) return true;
     
-    while (!q.empty()) {
-        int u = q.front();
-        q.pop();
-        
-        for (int v : graph[u]) {
-            if (parent[v] == -1 && !used_edges[u][v]) {
-                parent[v] = u;
-                if (v == t) return true;
-                q.push(v);
-            }
+    visited[u] = true;
+    
+    for (int v : graph[u]) {
+        if (!visited[v] && residual[u][v] > 0) {
+            path[v] = u;
+            if (dfs(v, t, residual, path)) return true;
         }
     }
     
     return false;
 }
 
-// Compute max flow from s to t (number of edge-disjoint paths)
-int max_flow(int s, int t) {
-    // Reset used edges
-    memset(used_edges, 0, sizeof(used_edges));
-    
-    int flow = 0;
-    // Find edge-disjoint paths using BFS
-    while (bfs(s, t)) {
-        // Found a path, mark edges as used
-        for (int v = t; v != s; v = parent[v]) {
-            int u = parent[v];
-            used_edges[u][v] = used_edges[v][u] = true;
+// Compute max flow from s to t using Ford-Fulkerson
+int max_flow(int s, int t, int n) {
+    // Create residual graph
+    vector<vector<int>> residual(n+1, vector<int>(n+1, 0));
+    for (int u = 1; u <= n; u++) {
+        for (int v : graph[u]) {
+            residual[u][v] = 1;  // All edges have capacity 1
         }
+    }
+    
+    vector<int> path(n+1, -1);
+    int flow = 0;
+    
+    // Find augmenting paths
+    while (true) {
+        memset(visited, 0, sizeof(visited));
+        path.assign(n+1, -1);
+        
+        if (!dfs(s, t, residual, path)) break;
+        
+        // Found a path, update residual capacities
+        int v = t;
+        while (v != s) {
+            int u = path[v];
+            residual[u][v] -= 1;
+            residual[v][u] += 1;
+            v = u;
+        }
+        
         flow++;
     }
     
@@ -71,7 +78,7 @@ int main() {
     long long total_flow = 0;
     for (int a = 1; a <= n; a++) {
         for (int b = a + 1; b <= n; b++) {
-            total_flow += max_flow(a, b);
+            total_flow += max_flow(a, b, n);
         }
     }
     
