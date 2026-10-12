@@ -2,7 +2,7 @@
 #include <vector>
 #include <cstring>
 #include <algorithm>
-#include <stack>
+#include <queue>
 
 using namespace std;
 
@@ -11,54 +11,38 @@ const int MAXN = 3005;
 // Global arrays to avoid stack overflow
 vector<int> graph[MAXN];
 int capacity[MAXN][MAXN];
+bool visited_global[MAXN];
+int parent_global[MAXN];
 
-// Iterative DFS using stack to find augmenting path
-bool dfs_iterative(int s, int t, int n) {
-    vector<int> parent(n+1, -1);
-    vector<bool> visited(n+1, false);
-    stack<int> st;
+// BFS to find augmenting path (Edmonds-Karp algorithm)
+bool bfs(int s, int t, int n) {
+    // Initialize visited and parent arrays
+    for (int i = 1; i <= n; i++) {
+        visited_global[i] = false;
+        parent_global[i] = -1;
+    }
     
-    st.push(s);
-    visited[s] = true;
+    queue<int> q;
+    q.push(s);
+    visited_global[s] = true;
     
-    while (!st.empty()) {
-        int u = st.top();
-        st.pop();
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
         
-        if (u == t) break;
-        
-        for (int v : graph[u]) {
-            if (!visited[v] && capacity[u][v] > 0) {
-                visited[v] = true;
-                parent[v] = u;
-                st.push(v);
+        for (int v = 1; v <= n; v++) {
+            if (!visited_global[v] && capacity[u][v] > 0) {
+                q.push(v);
+                parent_global[v] = u;
+                visited_global[v] = true;
             }
         }
     }
     
-    // If we didn't reach the target, no augmenting path exists
-    if (!visited[t]) return false;
-    
-    // Reconstruct path and find minimum capacity
-    int min_capacity = 1;  // Since all edges have capacity 1
-    int u = t;
-    while (parent[u] != -1) {
-        min_capacity = min(min_capacity, capacity[parent[u]][u]);
-        u = parent[u];
-    }
-    
-    // Update residual capacities along the path
-    u = t;
-    while (parent[u] != -1) {
-        capacity[parent[u]][u] -= min_capacity;
-        capacity[u][parent[u]] += min_capacity;
-        u = parent[u];
-    }
-    
-    return true;
+    return visited_global[t];
 }
 
-// Compute max flow from s to t using Ford-Fulkerson with iterative DFS
+// Compute max flow from s to t using Edmonds-Karp algorithm
 int max_flow(int s, int t, int n) {
     // Reset residual capacities
     int original_capacity[MAXN][MAXN];
@@ -70,10 +54,21 @@ int max_flow(int s, int t, int n) {
         }
     }
     
-    // Find augmenting paths until no more exist
     int flow = 0;
-    while (dfs_iterative(s, t, n)) {
-        flow++;
+    
+    // Find augmenting paths until no more exist
+    while (bfs(s, t, n)) {
+        // Find minimum capacity on the path
+        int path_flow = 1;  // Since all edges have capacity 1
+        
+        // Update residual capacities
+        for (int v = t; v != s; v = parent_global[v]) {
+            int u = parent_global[v];
+            capacity[u][v] -= path_flow;
+            capacity[v][u] += path_flow;
+        }
+        
+        flow += path_flow;
     }
     
     // Restore original capacities
