@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstring>
 #include <algorithm>
+#include <queue>
 
 using namespace std;
 
@@ -10,21 +11,24 @@ const int MAXN = 3005;
 // Global arrays
 vector<int> graph[MAXN];
 bool used_edges[MAXN][MAXN];  // Track used edges for current flow computation
+int parent[MAXN];  // For BFS
 
-// DFS to find a path from s to t
-bool dfs(int u, int t, int parent) {
-    if (u == t) return true;
+// BFS to find a path from s to t
+bool bfs(int s, int t) {
+    memset(parent, -1, sizeof(parent));
+    queue<int> q;
+    q.push(s);
     
-    for (int v : graph[u]) {
-        // Skip the edge we just came from (to avoid going back)
-        if (v == parent) continue;
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
         
-        // If edge is not used, try to use it
-        if (!used_edges[u][v]) {
-            used_edges[u][v] = used_edges[v][u] = true;
-            if (dfs(v, t, u)) return true;
-            // If path not found, backtrack and mark edge as unused
-            used_edges[u][v] = used_edges[v][u] = false;
+        for (int v : graph[u]) {
+            if (parent[v] == -1 && v != s && !used_edges[u][v]) {
+                parent[v] = u;
+                if (v == t) return true;
+                q.push(v);
+            }
         }
     }
     
@@ -37,8 +41,13 @@ int max_flow(int s, int t) {
     memset(used_edges, 0, sizeof(used_edges));
     
     int flow = 0;
-    // Find edge-disjoint paths
-    while (dfs(s, t, -1)) {
+    // Find edge-disjoint paths using BFS
+    while (bfs(s, t)) {
+        // Found a path, mark edges as used
+        for (int v = t; v != s; v = parent[v]) {
+            int u = parent[v];
+            used_edges[u][v] = used_edges[v][u] = true;
+        }
         flow++;
     }
     
